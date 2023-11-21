@@ -1,10 +1,10 @@
 package bluerpc
 
 import (
-	"encoding/json"
+	"fmt"
+	"log"
 	"reflect"
 
-	"github.com/go-playground/validator"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -41,29 +41,70 @@ func (grp *Group) Get(path string, handlers ...fiber.Handler) *Group {
 	grp.fiberApp.Get(path, handlers...)
 	return grp
 }
-func validateOutput(resBody interface{}, validate *validator.Validate, outputSchema interface{}) error {
-	// Step 1: Marshal resBody to JSON
-	bodyJSON, err := json.Marshal(resBody)
-	if err != nil {
-		return err
+
+func addProcedure[T fiber.Router](handler T, path string, proc *Procedure) {
+
+	validatorFn := *proc.validatorFn
+
+	inputValidationMiddleware := func(c *fiber.Ctx) error {
+		if proc.inputSchema == nil || proc.validatorFn == nil {
+			return c.Next()
+		}
+
+		localSchema := copySchema(proc.inputSchema)
+
+		// Parse the request body into the schema instance
+		if err := c.BodyParser(localSchema); err != nil {
+			fmt.Println("err here at bodyParser")
+			return err
+		}
+
+		// Validate the struct
+		fmt.Println("arrived here at validate the struct", localSchema)
+		if err := validatorFn(localSchema); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error":   "input validation error",
+				"details": err.Error(),
+			})
+		}
+
+		return c.Next()
 	}
 
-	// Step 2: Create an instance of the struct type that outputSchema represents
-	schemaType := reflect.TypeOf(outputSchema)
-	if schemaType.Kind() == reflect.Ptr {
-		schemaType = schemaType.Elem()
+	responseHandler := func(c *fiber.Ctx) error {
+		res, err := proc.handler(c)
+		if err != nil {
+			fmt.Println("err here at responseHandler", err)
+			return err
+		}
+		if proc.outputSchema != nil && proc.validatorFn != nil {
+			err = validateOutput(res.Body, validatorFn, proc.outputSchema)
+			if err != nil {
+				return err
+			}
+		}
+		c.JSON(res.Body)
+		return nil
 	}
-	schemaInstance := reflect.New(schemaType).Interface()
+	AddProcedureToTree(path, proc)
 
-	// Unmarshal the JSON into the schema instance
-	if err := json.Unmarshal(bodyJSON, schemaInstance); err != nil {
-		return err
+	switch proc.method {
+	case QUERY:
+		handler.Get(path, inputValidationMiddleware, responseHandler)
+	case MUTATION:
+		handler.Post(path, inputValidationMiddleware, responseHandler)
 	}
 
-	// Step 3: Validate the struct
-	if err := validate.Struct(schemaInstance); err != nil {
-		return err
+}
+
+func validateOutput(resBody interface{}, validatorFn validatorFn, outputSchema interface{}) error {
+
+	if reflect.TypeOf(resBody) != reflect.TypeOf(outputSchema) {
+		log.Fatalf("Response body and the provided output schema are of different types. Response body is %s while Output Schema is %s", reflect.TypeOf(resBody), reflect.TypeOf(outputSchema))
 	}
 
+	if err := validatorFn(resBody); err != nil {
+		panic(err)
+	}
 	return nil
 }

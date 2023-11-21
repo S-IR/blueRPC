@@ -2,6 +2,7 @@ package main
 
 import (
 	bluerpc "github.com/S-IR/blueRPC/blueRPC"
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -12,26 +13,27 @@ type Input struct {
 }
 
 type Output struct {
-	FieldOneOut      string `validate:"required"`
-	FieldTwoOut      string `validate:"required"`
-	FieldThreeStruct string `validate:"required"`
+	FieldOneOut   string `json:"fieldOneOut" validate:"required"`
+	FieldTwoOut   string `json:"fieldTwoOut" validate:"required"`
+	FieldThreeOut string `json:"fieldThreeOut" validate:"required"`
 }
 
 func main() {
+	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	app := bluerpc.New(&fiber.Config{}, &bluerpc.Config{
-		OutputPath: "./some-file.ts",
+		OutputPath:  "./some-file.ts",
+		ValidatorFn: validate.Struct,
 	})
 
 	app.Group("/users", &bluerpc.ProcedureList{
-		"hello": bluerpc.NewProcedure().Input(Input{}).Output(Output{}).Query(func(c *fiber.Ctx) (bluerpc.Res, error) {
+		"hello": app.NewProcedure().Input(&Input{}).Query(func(c *fiber.Ctx) (bluerpc.Res[Output], error) {
 
-			return bluerpc.Res{
+			return bluerpc.Res[Output]{
 				Status: 200,
-				Body: map[string]string{
-					"fieldOneOut":      "value1",
-					"fieldTwoOutdd":    "value2",
-					"fieldThreeStruct": "value3",
+				Body: Output{
+					FieldTwoOut:   "value2",
+					FieldThreeOut: "value3",
 				},
 			}, nil
 

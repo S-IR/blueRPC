@@ -1,9 +1,9 @@
 package bluerpc
 
 import (
+	"errors"
 	"net/http"
-
-	"github.com/go-playground/validator"
+	"reflect"
 )
 
 type Method string
@@ -26,9 +26,10 @@ type Procedure struct {
 	inputSchema  interface{}
 	outputSchema interface{}
 
-	method    Method
-	handler   Handler
-	validator *validator.Validate
+	method      Method
+	handler     Handler
+	app         *App
+	validatorFn *validatorFn
 }
 
 type IDK interface {
@@ -38,27 +39,37 @@ type IDK interface {
 	Mutation(Handler)
 }
 
-func NewProcedure() *Procedure {
-	return &Procedure{}
-}
-func (p *Procedure) Input(schema interface{}) *Procedure {
-	p.inputSchema = schema
-
-	if p.validator == nil {
-		validator := validator.New()
-		p.validator = validator
+func (a *App) NewProcedure() *Procedure {
+	return &Procedure{
+		app:         a,
+		validatorFn: &a.config.ValidatorFn,
 	}
+}
+
+func (p *Procedure) Input(schema interface{}) *Procedure {
+	if reflect.ValueOf(schema).Kind() != reflect.Ptr {
+		panic(errors.New("Output schema must be a pointer to a struct"))
+	}
+	// Further, check if it's a pointer to a struct
+	if reflect.Indirect(reflect.ValueOf(schema)).Kind() != reflect.Struct {
+		panic(errors.New("Output schema must be a pointer to a struct"))
+	}
+
+	p.inputSchema = schema
 
 	return p
 }
 
 func (p *Procedure) Output(schema interface{}) *Procedure {
-	p.outputSchema = schema
-
-	if p.validator == nil {
-		validator := validator.New()
-		p.validator = validator
+	if reflect.ValueOf(schema).Kind() != reflect.Ptr {
+		panic(errors.New("Output schema must be a pointer to a struct"))
 	}
+	// Further, check if it's a pointer to a struct
+	if reflect.Indirect(reflect.ValueOf(schema)).Kind() != reflect.Struct {
+		panic(errors.New("Output schema must be a pointer to a struct"))
+	}
+
+	p.outputSchema = schema
 
 	return p
 }
