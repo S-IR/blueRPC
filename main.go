@@ -26,19 +26,20 @@ func main() {
 		ValidatorFn: validate.Struct,
 	})
 
-	app.Group("/users", &bluerpc.ProcedureList{
-		"hello": app.NewProcedure().Input(&Input{}).Query(func(c *fiber.Ctx) (bluerpc.Res[Output], error) {
-
-			return bluerpc.Res[Output]{
-				Status: 200,
-				Body: Output{
-					FieldTwoOut:   "value2",
-					FieldThreeOut: "value3",
-				},
-			}, nil
-
-		}),
+	proc := bluerpc.NewProcedure[Input, Output](app).Query(func(ctx *fiber.Ctx, input Input) (bluerpc.Res[Output], error) {
+		return bluerpc.Res[Output]{
+			Status: 200,
+			Body: Output{
+				FieldOneOut:   "dwa",
+				FieldTwoOut:   "dwa",
+				FieldThreeOut: "dwadwadwa",
+			},
+		}, nil
 	})
+
+	users := app.Group("/users")
+	proc.Attach(users, "/hello")
+
 	app.Listen(":3000")
 
 }

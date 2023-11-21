@@ -5,17 +5,23 @@ import (
 	"strings"
 )
 
+type procedureInfo struct {
+	path   string
+	input  interface{}
+	output interface{}
+}
+
 type routeNode struct {
-	Children  map[string]*routeNode
-	Procedure *Procedure
+	Children      map[string]*routeNode
+	procedureInfo procedureInfo
 }
 
 var (
 	root *routeNode
 )
 
-func AddProcedureToTree(fullPath string, proc *Procedure) {
-	segments := strings.Split(fullPath, "/")
+func AddProcedureToTree(procInfo procedureInfo) {
+	segments := strings.Split(procInfo.path, "/")
 
 	fmt.Println("root", root)
 	currentNode := root
@@ -32,5 +38,5 @@ func AddProcedureToTree(fullPath string, proc *Procedure) {
 		currentNode = currentNode.Children[segment]
 	}
 
-	currentNode.Procedure = proc
+	currentNode.procedureInfo = procInfo
 }

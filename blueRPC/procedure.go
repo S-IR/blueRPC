@@ -1,7 +1,6 @@
 package bluerpc
 
 import (
-	"errors"
 	"net/http"
 	"reflect"
 )
@@ -22,72 +21,53 @@ type Header struct {
 	Cookies         []*http.Cookie //Cookies
 }
 
-type Procedure struct {
-	inputSchema  interface{}
-	outputSchema interface{}
+type Procedure[input any, output any] struct {
+	inputSchema  *input
+	outputSchema *output
 
 	method      Method
-	handler     Handler
+	handler     Handler[input, output]
 	app         *App
 	validatorFn *validatorFn
 }
 
-type IDK interface {
-	Use(args ...interface{})
+// Creates a new procedure to use around the app
+// First generic argument is Input, Second is Output
+func NewProcedure[input any, output any](app *App) *Procedure[input, output] {
 
-	Query(Handler)
-	Mutation(Handler)
-}
+	var inputInstance *input
+	var outputInstance *output
+	if reflect.TypeOf(new(input)).Elem().Kind() == reflect.Struct {
+		temp := new(input)
+		inputInstance = temp
+	}
 
-func (a *App) NewProcedure() *Procedure {
-	return &Procedure{
-		app:         a,
-		validatorFn: &a.config.ValidatorFn,
+	// Check if output is a struct
+	if reflect.TypeOf(new(output)).Elem().Kind() == reflect.Struct {
+		temp := new(output)
+		outputInstance = temp
+	}
+
+	return &Procedure[input, output]{
+		app:          app,
+		validatorFn:  &app.config.ValidatorFn,
+		inputSchema:  inputInstance,
+		outputSchema: outputInstance,
 	}
 }
 
-func (p *Procedure) Input(schema interface{}) *Procedure {
-	if reflect.ValueOf(schema).Kind() != reflect.Ptr {
-		panic(errors.New("Output schema must be a pointer to a struct"))
-	}
-	// Further, check if it's a pointer to a struct
-	if reflect.Indirect(reflect.ValueOf(schema)).Kind() != reflect.Struct {
-		panic(errors.New("Output schema must be a pointer to a struct"))
-	}
-
-	p.inputSchema = schema
-
-	return p
-}
-
-func (p *Procedure) Output(schema interface{}) *Procedure {
-	if reflect.ValueOf(schema).Kind() != reflect.Ptr {
-		panic(errors.New("Output schema must be a pointer to a struct"))
-	}
-	// Further, check if it's a pointer to a struct
-	if reflect.Indirect(reflect.ValueOf(schema)).Kind() != reflect.Struct {
-		panic(errors.New("Output schema must be a pointer to a struct"))
-	}
-
-	p.outputSchema = schema
-
-	return p
-}
-
-func (p *Procedure) Query(h Handler) *Procedure {
+func (p *Procedure[input, output]) Query(h Handler[input, output]) *Procedure[input, output] {
 	p.method = QUERY
 	p.handler = h
 	return p
 }
 
-// func (p *Procedure) Attach(g *Group, endpoint string) error {
+func (p *Procedure[input, output]) Mutate(h Handler[input, output]) *Procedure[input, output] {
+	p.method = MUTATION
+	p.handler = h
+	return p
+}
+func (p *Procedure[input, output]) Attach(grp *Group, path string) {
+	addProcedure(grp.fiberRouter, path, p)
 
-// 	if len(endpoint) == 0 {
-// 		return fmt.Errorf("your endpoint must be at least 1 character long. Current value :%s", endpoint)
-// 	}
-// 	if endpoint[0] != '/' {
-// 		return fmt.Errorf("your endpoint must start with a forward slash ( / ). Current value : %s", endpoint)
-// 	}
-// 	addProcedure(endpoint, p)
-// 	return nil
-// }
+}

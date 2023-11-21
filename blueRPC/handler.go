@@ -7,4 +7,5 @@ type Res[T any] struct {
 	Header Header
 	Body   interface{}
 }
-type Handler[T any] func(*fiber.Ctx) (Res[T], error)
+
+type Handler[input any, output any] func(ctx *fiber.Ctx, input input) (Res[output], error)

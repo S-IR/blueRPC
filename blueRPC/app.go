@@ -1,6 +1,11 @@
 package bluerpc
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"fmt"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+)
 
 type validatorFn func(interface{}) error
 
@@ -19,8 +24,18 @@ func New(fiberConfig *fiber.Config, blueConfig *Config) *App {
 		blueConfig.OutputPath = tsOutputPath
 	}
 
+	if blueConfig.RuntimeEnv == "" {
+		blueConfig.RuntimeEnv = DEVELOPMENT
+	}
+
+	fmt.Println("blueConfig.RuntimeEnv", blueConfig.RuntimeEnv)
+	fiberApp := fiber.New(*fiberConfig)
+	if blueConfig.RuntimeEnv == DEVELOPMENT {
+		fiberApp.Use(logger.New())
+	}
+
 	return &App{
-		fiberApp: fiber.New(*fiberConfig),
+		fiberApp: fiberApp,
 		config:   blueConfig,
 	}
 }
@@ -28,10 +43,14 @@ func New(fiberConfig *fiber.Config, blueConfig *Config) *App {
 func NewFromApp(app *fiber.App, blueConfig Config) *App {
 	var (
 		tsOutputPath = "./output.ts"
+		runEnv       = DEVELOPMENT
 	)
 
 	if blueConfig.OutputPath == "" {
 		blueConfig.OutputPath = tsOutputPath
+	}
+	if blueConfig.RuntimeEnv == "" {
+		blueConfig.RuntimeEnv = runEnv
 	}
 
 	return &App{
@@ -40,30 +59,25 @@ func NewFromApp(app *fiber.App, blueConfig Config) *App {
 	}
 }
 
-func (a *App) Group(groupPath string, procedures ...*ProcedureList) *Group {
+func (a *App) Group(path string) *Group {
 
-	var plist *ProcedureList
-	if len(procedures) > 0 {
-		plist = procedures[0]
-	}
+	newFiberRouter := a.fiberApp.Group(path)
 
-	newFiberRouter := a.fiberApp.Group(groupPath)
-
-	for path, proc := range *plist {
-		fullPath := combinePaths(groupPath, path)
-		addProcedure(a.fiberApp, fullPath, proc)
-	}
-
+	// newFiberRouter.Get("/hello", func(c *fiber.Ctx) error {
+	// 	return c.SendString("Hello, World!")
+	// })
 	return &Group{
 		fiberRouter: newFiberRouter,
-		basePath:    groupPath,
+		basePath:    path,
 		fiberApp:    a.fiberApp,
-		Procedures:  *plist,
 	}
 }
 
 func (a *App) Listen(port string) *App {
-	// GenerateTypes(root, a.tsOutputPath)
+
+	// if a.config.RuntimeEnv == DEVELOPMENT {
+	// 	GenerateTypes(root, a.config.OutputPath)
+	// }
 
 	a.fiberApp.Listen(port)
 	return a
