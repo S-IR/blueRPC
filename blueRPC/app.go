@@ -1,61 +1,46 @@
 package bluerpc
 
 import (
-	"fmt"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
 
 type validatorFn func(interface{}) error
+type ValidRouter interface {
+	getFiberRouter() fiber.Router
+}
 
 type App struct {
 	fiberApp *fiber.App
-
-	config *Config
+	config   *Config
 }
 
-func New(fiberConfig *fiber.Config, blueConfig *Config) *App {
-	var (
-		tsOutputPath = "./output.ts"
-	)
+func (a *App) getFiberRouter() fiber.Router {
+	return a.fiberApp
+}
 
-	if blueConfig.OutputPath == "" {
-		blueConfig.OutputPath = tsOutputPath
-	}
+func New(blueConfig ...*Config) *App {
 
-	if blueConfig.RuntimeEnv == "" {
-		blueConfig.RuntimeEnv = DEVELOPMENT
-	}
+	cfg := setAppDefaults(blueConfig)
 
-	fmt.Println("blueConfig.RuntimeEnv", blueConfig.RuntimeEnv)
-	fiberApp := fiber.New(*fiberConfig)
-	if blueConfig.RuntimeEnv == DEVELOPMENT {
+	fiberApp := fiber.New(*cfg.FiberConfig)
+	if !cfg.DisableRequestLogging {
 		fiberApp.Use(logger.New())
 	}
 
 	return &App{
 		fiberApp: fiberApp,
-		config:   blueConfig,
+		config:   cfg,
 	}
 }
 
-func NewFromApp(app *fiber.App, blueConfig Config) *App {
-	var (
-		tsOutputPath = "./output.ts"
-		runEnv       = DEVELOPMENT
-	)
+func NewFromApp(app *fiber.App, blueConfig ...*Config) *App {
 
-	if blueConfig.OutputPath == "" {
-		blueConfig.OutputPath = tsOutputPath
-	}
-	if blueConfig.RuntimeEnv == "" {
-		blueConfig.RuntimeEnv = runEnv
-	}
+	cfg := setAppDefaults(blueConfig)
 
 	return &App{
 		fiberApp: app,
-		config:   &blueConfig,
+		config:   cfg,
 	}
 }
 
@@ -81,4 +66,30 @@ func (a *App) Listen(port string) *App {
 
 	a.fiberApp.Listen(port)
 	return a
+}
+func setAppDefaults(blueConfig []*Config) *Config {
+	var cfg *Config
+
+	if len(blueConfig) > 0 {
+		cfg = blueConfig[0]
+	} else {
+		cfg = &Config{}
+	}
+	if cfg.FiberConfig == nil {
+		cfg.FiberConfig = &fiber.Config{}
+	}
+
+	var (
+		tsOutputPath = "./output.ts"
+		startPath    = "/bluerpc"
+	)
+
+	if cfg.OutputPath == "" {
+		cfg.OutputPath = tsOutputPath
+	}
+
+	if cfg.StartingPath == "" {
+		cfg.StartingPath = startPath
+	}
+	return cfg
 }

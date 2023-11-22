@@ -7,9 +7,7 @@ import (
 )
 
 type Input struct {
-	FieldOne   string `json:"fieldOne" validate:"required"`
-	FieldTwo   string `json:"fieldTwo" validate:"required"`
-	FieldThree string `json:"fieldThree" validate:"required"`
+	House string `query:"house" validate:"required"`
 }
 
 type Output struct {
@@ -21,17 +19,19 @@ type Output struct {
 func main() {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
-	app := bluerpc.New(&fiber.Config{}, &bluerpc.Config{
+	app := bluerpc.New(&bluerpc.Config{
 		OutputPath:  "./some-file.ts",
 		ValidatorFn: validate.Struct,
+		FiberConfig: &fiber.Config{},
 	})
 
-	proc := bluerpc.NewProcedure[Input, Output](app).Query(func(ctx *fiber.Ctx, input Input) (bluerpc.Res[Output], error) {
-		return bluerpc.Res[Output]{
+	proc := bluerpc.NewQuery[Input, Output](app, func(ctx *fiber.Ctx, queryParams Input) (*bluerpc.Res[Output], error) {
+		return &bluerpc.Res[Output]{
 			Status: 200,
+			Header: bluerpc.Header{},
 			Body: Output{
 				FieldOneOut:   "dwa",
-				FieldTwoOut:   "dwa",
+				FieldTwoOut:   "dwadwa",
 				FieldThreeOut: "dwadwadwa",
 			},
 		}, nil
@@ -43,3 +43,25 @@ func main() {
 	app.Listen(":3000")
 
 }
+
+// func main() {
+// 	app := bluerpc.New()
+
+// 	type Output struct {
+// 		Something string
+// 	}
+
+// 	helloGrp := app.Group("/hello")
+
+// 	worldQuery := bluerpc.NewQuery[any, Output](app, func(ctx *fiber.Ctx, queryParams any) (*bluerpc.Res[Output], error) {
+// 		return &bluerpc.Res[Output]{
+// 			Status: 200,
+// 			Body: Output{
+// 				Something: "hello",
+// 			},
+// 		}, nil
+// 	})
+// 	worldQuery.Attach(helloGrp, "/world")
+
+// 	app.Listen(":3000")
+// }
