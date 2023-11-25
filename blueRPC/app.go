@@ -1,6 +1,11 @@
 package bluerpc
 
 import (
+	"fmt"
+	"strings"
+	"time"
+
+	genTypescript "github.com/S-IR/blueRPC/blueRPC/genTS"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
@@ -8,6 +13,7 @@ import (
 type validatorFn func(interface{}) error
 type ValidRouter interface {
 	getFiberRouter() fiber.Router
+	getPath() string
 }
 
 type App struct {
@@ -58,15 +64,6 @@ func (a *App) Group(path string) *Group {
 	}
 }
 
-func (a *App) Listen(port string) *App {
-
-	// if a.config.RuntimeEnv == DEVELOPMENT {
-	// 	GenerateTypes(root, a.config.OutputPath)
-	// }
-
-	a.fiberApp.Listen(port)
-	return a
-}
 func setAppDefaults(blueConfig []*Config) *Config {
 	var cfg *Config
 
@@ -92,4 +89,30 @@ func setAppDefaults(blueConfig []*Config) *Config {
 		cfg.StartingPath = startPath
 	}
 	return cfg
+}
+func (a *App) Listen(port string) *App {
+
+	var name string
+	lastSlashIndex := strings.LastIndex(a.config.StartingPath, "/")
+	if lastSlashIndex == -1 {
+		name = a.config.StartingPath
+	} else {
+		name = a.config.StartingPath[lastSlashIndex+1:]
+	}
+
+	if a.config.disableGenerateTS == false {
+		start := time.Now()
+		err := genTypescript.StartGenerating(a.config.OutputPath, name)
+		if err != nil {
+			panic(err)
+		}
+		elapsed := time.Since(start)
+		fmt.Printf(fiber.DefaultColors.Green+"Execution time for GENERATING TYPESCRIPT: %s\n", elapsed)
+	}
+
+	a.fiberApp.Listen(port)
+	return a
+}
+func (a *App) getPath() string {
+	return a.config.StartingPath
 }

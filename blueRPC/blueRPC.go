@@ -24,9 +24,3 @@ type Config struct {
 	//This is the home route that all of the bluerpc routes will start from. Default is "/bluerpc".
 	StartingPath string
 }
-
-func init() {
-	root = &routeNode{
-		Children: make(map[string]*routeNode),
-	}
-}

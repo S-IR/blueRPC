@@ -3,10 +3,11 @@ package bluerpc
 import (
 	"fmt"
 
+	genTypescript "github.com/S-IR/blueRPC/blueRPC/genTS"
 	"github.com/gofiber/fiber/v2"
 )
 
-func addQueryProcedure[T fiber.Router, queryParams any, input any, output any](handler T, path string, proc *Procedure[queryParams, input, output]) {
+func addQueryProcedure[T fiber.Router, queryParams any, input any, output any](handler T, basePath, slug string, proc *Procedure[queryParams, input, output]) {
 	validatorFn := *proc.validatorFn
 	FullHandler := func(c *fiber.Ctx) error {
 		input, err := validateQuery(c, validatorFn, proc)
@@ -32,19 +33,23 @@ func addQueryProcedure[T fiber.Router, queryParams any, input any, output any](h
 
 		return c.JSON(res.Body)
 	}
-	procInfo := procedureInfo{
-		path:   path,
-		input:  proc.inputSchema,
-		output: proc.outputSchema,
-	}
+
 	if !proc.app.config.disableGenerateTS {
-		AddProcedureToTree(procInfo)
+
+		params := *new(queryParams)
+
+		output := *new(output)
+
+		fullRoute := fmt.Sprintf("%s%s", basePath, slug)
+
+		genTypescript.AddProcedureToTree(fullRoute, params, nil, output, genTypescript.Method(QUERY))
+
 	}
-	handler.Get(path, FullHandler)
+	handler.Get(slug, FullHandler)
 
 }
 
-func addMutationProcedure[T fiber.Router, queryParams any, input any, output any](handler T, path string, proc *Procedure[queryParams, input, output]) {
+func addMutationProcedure[T fiber.Router, queryParams any, input any, output any](handler T, basePath, slug string, proc *Procedure[queryParams, input, output]) {
 
 	validatorFn := *proc.validatorFn
 	FullHandler := func(c *fiber.Ctx) error {
@@ -79,15 +84,17 @@ func addMutationProcedure[T fiber.Router, queryParams any, input any, output any
 
 		return c.JSON(res.Body)
 	}
-	procInfo := procedureInfo{
-		path:   path,
-		input:  proc.inputSchema,
-		output: proc.outputSchema,
-	}
 	if !proc.app.config.disableGenerateTS {
-		AddProcedureToTree(procInfo)
+		params := *new(queryParams)
+
+		input := *new(input)
+
+		output := *new(output)
+
+		fullRoute := fmt.Sprintf("%s%s", basePath, slug)
+		genTypescript.AddProcedureToTree(fullRoute, params, input, output, genTypescript.Method(MUTATION))
 	}
-	handler.Post(path, FullHandler)
+	handler.Post(slug, FullHandler)
 }
 
 func validateQuery[queryParams any, input any, output any](c *fiber.Ctx, validatorFn validatorFn, proc *Procedure[queryParams, input, output]) (queryParams, error) {

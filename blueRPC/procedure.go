@@ -81,13 +81,13 @@ func NewQuery[queryParams any, output any](app *App, query Query[queryParams, ou
 }
 
 // Attaches the given Procedure to a group
-func (p *Procedure[queryParams, input, output]) Attach(grp ValidRouter, path string) {
+func (p *Procedure[queryParams, input, output]) Attach(grp ValidRouter, slug string) {
 	router := grp.getFiberRouter()
 
 	switch p.method {
 	case QUERY:
-		addQueryProcedure(router, path, p)
+		addQueryProcedure(router, grp.getPath(), slug, p)
 	case MUTATION:
-		addMutationProcedure(router, path, p)
+		addMutationProcedure(router, grp.getPath(), slug, p)
 	}
 }
