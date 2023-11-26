@@ -1,13 +1,19 @@
 package bluerpc
 
 import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"net"
+	"net/http"
 	"strings"
 	"time"
 
 	genTypescript "github.com/S-IR/blueRPC/blueRPC/genTS"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/valyala/fasthttp"
 )
 
 type validatorFn func(interface{}) error
@@ -27,12 +33,20 @@ func (a *App) getFiberRouter() fiber.Router {
 
 func New(blueConfig ...*Config) *App {
 
-	cfg := setAppDefaults(blueConfig)
+	var cfg *Config
+
+	if len(blueConfig) > 0 {
+		cfg = blueConfig[0]
+	} else {
+		cfg = &Config{}
+	}
+
+	if cfg.FiberConfig == nil {
+		cfg.FiberConfig = &fiber.Config{}
+	}
 
 	fiberApp := fiber.New(*cfg.FiberConfig)
-	if !cfg.DisableRequestLogging {
-		fiberApp.Use(logger.New())
-	}
+	cfg, fiberApp = setAppDefaults(blueConfig, fiberApp)
 
 	return &App{
 		fiberApp: fiberApp,
@@ -40,12 +54,18 @@ func New(blueConfig ...*Config) *App {
 	}
 }
 
-func NewFromApp(app *fiber.App, blueConfig ...*Config) *App {
+func NewFromApp(fiberApp *fiber.App, blueConfig ...*Config) *App {
+	var cfg *Config
 
-	cfg := setAppDefaults(blueConfig)
+	if len(blueConfig) > 0 {
+		cfg = blueConfig[0]
+	} else {
+		cfg = &Config{}
+	}
+	cfg, fiberApp = setAppDefaults(blueConfig, fiberApp)
 
 	return &App{
-		fiberApp: app,
+		fiberApp: fiberApp,
 		config:   cfg,
 	}
 }
@@ -64,7 +84,8 @@ func (a *App) Group(path string) *Group {
 	}
 }
 
-func setAppDefaults(blueConfig []*Config) *Config {
+func setAppDefaults(blueConfig []*Config, fiberApp *fiber.App) (*Config, *fiber.App) {
+
 	var cfg *Config
 
 	if len(blueConfig) > 0 {
@@ -88,8 +109,62 @@ func setAppDefaults(blueConfig []*Config) *Config {
 	if cfg.StartingPath == "" {
 		cfg.StartingPath = startPath
 	}
-	return cfg
+	if !cfg.DisableRequestLogging {
+		fiberApp.Use(logger.New())
+	}
+	if !cfg.DisableJSONOnlyErrors {
+		fiberApp.Use(DefaultErrorMiddleware)
+	}
+	return cfg, fiberApp
 }
+
+func (a *App) Static(route, filePath string, settings ...*fiber.Static) *App {
+
+	var actualSettings *fiber.Static
+	if len(settings) > 1 {
+		actualSettings = settings[0]
+	} else {
+		actualSettings = nil
+	}
+	a.fiberApp.Static(route, filePath, *actualSettings)
+	return a
+}
+func (a *App) Server() *fasthttp.Server {
+	return a.fiberApp.Server()
+}
+func (a *App) Shutdown() error {
+	return a.fiberApp.Shutdown()
+}
+func (a *App) ShutdownWithTimeout(timeout time.Duration) error {
+	return a.fiberApp.ShutdownWithTimeout(timeout)
+}
+
+func (a *App) ShutdownWithContext(ctx context.Context) error {
+	return a.fiberApp.ShutdownWithContext(ctx)
+}
+func (a *App) HandlersCount() uint32 {
+	return a.fiberApp.HandlersCount()
+}
+func (a *App) Stack() [][]*fiber.Route {
+	return a.fiberApp.Stack()
+}
+func (a *App) Name(name string) ValidRouter {
+	a.fiberApp.Name(name)
+	return a
+}
+func (a *App) GetRoutes(filterUseOption ...bool) []fiber.Route {
+	return a.fiberApp.GetRoutes(filterUseOption...)
+}
+
+// same as the Config method in fiber
+func (a *App) FiberConfig() fiber.Config {
+	return a.fiberApp.Config()
+}
+func (a *App) BluerpcConfig() Config {
+	return *a.config
+}
+
+// same as the Listen method in fiber
 func (a *App) Listen(port string) *App {
 
 	var name string
@@ -112,6 +187,29 @@ func (a *App) Listen(port string) *App {
 
 	a.fiberApp.Listen(port)
 	return a
+}
+
+// sale as ListenTLS method in fiber
+func (a *App) ListenTLS(addr, certFile, keyFile string) error {
+	return a.ListenTLS(addr, certFile, keyFile)
+}
+
+// sale as Listener method in fiber
+func (a *App) Listener(ln net.Listener) error {
+	return a.fiberApp.Listener(ln)
+}
+
+// sale as Test method in fiber
+func (a *App) Test(req *http.Request, msTimeout ...int) (*http.Response, error) {
+	return a.fiberApp.Test(req, msTimeout...)
+}
+func (a *App) Hooks() *fiber.Hooks {
+	return a.fiberApp.Hooks()
+}
+
+// sale as ListenMutualTLSWithCertificate method in fiber
+func (a *App) ListenMutualTLSWithCertificate(addr string, cert tls.Certificate, clientCertPool *x509.CertPool) error {
+	return a.fiberApp.ListenMutualTLSWithCertificate(addr, cert, clientCertPool)
 }
 func (a *App) getPath() string {
 	return a.config.StartingPath

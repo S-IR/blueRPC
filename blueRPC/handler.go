@@ -26,3 +26,7 @@ type Query[queryParams any, output any] func(ctx *fiber.Ctx, queryParams queryPa
 // Second is INPUT.
 // Third is OUTPUT.
 type Mutation[queryParams any, input any, output any] func(ctx *fiber.Ctx, queryParams queryParams, input input) (*Res[output], error)
+
+type DefaultErrorResponse struct {
+	Message string `json:"message"`
+}

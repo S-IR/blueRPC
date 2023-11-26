@@ -1,0 +1,1 @@
+type bluerpc ={hello:{world:{query:()=>(void);}},hey:{hey:{query:()=>(void);}}}

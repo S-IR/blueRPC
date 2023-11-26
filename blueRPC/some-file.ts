@@ -1,0 +1,1 @@
+type bluerpc ={bluerpc:{test:{query:(queryParams:{ Something: string,})=>(void);mutation:(input : {queryParams:{ Something: string,},input:{ House: string,}})=>({ fieldOneOut: string, fieldTwoOut: string|undefined, fieldThreeOut: string,});}},hello:{world:{query:()=>(void);}},hey:{hey:{query:()=>(void);}}}

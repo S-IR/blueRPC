@@ -29,8 +29,15 @@ type Procedure[queryParams any, input any, output any] struct {
 // Use any to avoid validation
 func NewMutation[queryParams any, input any, output any](app *App, mutation Mutation[queryParams, input, output]) *Procedure[queryParams, input, output] {
 
+	var queryParamsInstance *queryParams
 	var inputInstance *input
 	var outputInstance *output
+
+	if reflect.TypeOf(new(queryParams)).Elem().Kind() == reflect.Struct {
+		temp := new(queryParams)
+		queryParamsInstance = temp
+	}
+
 	if reflect.TypeOf(new(input)).Elem().Kind() == reflect.Struct {
 		temp := new(input)
 		inputInstance = temp
@@ -43,12 +50,13 @@ func NewMutation[queryParams any, input any, output any](app *App, mutation Muta
 	}
 
 	return &Procedure[queryParams, input, output]{
-		app:             app,
-		validatorFn:     &app.config.ValidatorFn,
-		inputSchema:     inputInstance,
-		outputSchema:    outputInstance,
-		method:          MUTATION,
-		mutationHandler: mutation,
+		app:               app,
+		validatorFn:       &app.config.ValidatorFn,
+		inputSchema:       inputInstance,
+		queryParamsSchema: queryParamsInstance,
+		outputSchema:      outputInstance,
+		method:            MUTATION,
+		mutationHandler:   mutation,
 	}
 }
 
@@ -81,13 +89,13 @@ func NewQuery[queryParams any, output any](app *App, query Query[queryParams, ou
 }
 
 // Attaches the given Procedure to a group
-func (p *Procedure[queryParams, input, output]) Attach(grp ValidRouter, slug string) {
-	router := grp.getFiberRouter()
+func (p *Procedure[queryParams, input, output]) Attach(router ValidRouter, slug string) {
+	fiberRouter := router.getFiberRouter()
 
 	switch p.method {
 	case QUERY:
-		addQueryProcedure(router, grp.getPath(), slug, p)
+		addQueryProcedure(fiberRouter, router.getPath(), slug, p)
 	case MUTATION:
-		addMutationProcedure(router, grp.getPath(), slug, p)
+		addMutationProcedure(fiberRouter, router.getPath(), slug, p)
 	}
 }

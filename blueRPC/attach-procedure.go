@@ -8,6 +8,8 @@ import (
 )
 
 func addQueryProcedure[T fiber.Router, queryParams any, input any, output any](handler T, basePath, slug string, proc *Procedure[queryParams, input, output]) {
+
+	fullRoute := fmt.Sprintf("%s%s", basePath, slug)
 	validatorFn := *proc.validatorFn
 	FullHandler := func(c *fiber.Ctx) error {
 		input, err := validateQuery(c, validatorFn, proc)
@@ -20,7 +22,7 @@ func addQueryProcedure[T fiber.Router, queryParams any, input any, output any](h
 		if err != nil {
 			return err
 		}
-		err = validateOutput(validatorFn, proc, res)
+		err = validateOutput(validatorFn, proc, res, fullRoute, QUERY)
 
 		if err != nil {
 			return err
@@ -40,8 +42,6 @@ func addQueryProcedure[T fiber.Router, queryParams any, input any, output any](h
 
 		output := *new(output)
 
-		fullRoute := fmt.Sprintf("%s%s", basePath, slug)
-
 		genTypescript.AddProcedureToTree(fullRoute, params, nil, output, genTypescript.Method(QUERY))
 
 	}
@@ -50,6 +50,7 @@ func addQueryProcedure[T fiber.Router, queryParams any, input any, output any](h
 }
 
 func addMutationProcedure[T fiber.Router, queryParams any, input any, output any](handler T, basePath, slug string, proc *Procedure[queryParams, input, output]) {
+	fullRoute := fmt.Sprintf("%s%s", basePath, slug)
 
 	validatorFn := *proc.validatorFn
 	FullHandler := func(c *fiber.Ctx) error {
@@ -72,7 +73,7 @@ func addMutationProcedure[T fiber.Router, queryParams any, input any, output any
 			return nil
 		}
 
-		err = validateOutput(validatorFn, proc, res)
+		err = validateOutput(validatorFn, proc, res, fullRoute, MUTATION)
 		if err != nil {
 			return err
 		}
@@ -91,7 +92,6 @@ func addMutationProcedure[T fiber.Router, queryParams any, input any, output any
 
 		output := *new(output)
 
-		fullRoute := fmt.Sprintf("%s%s", basePath, slug)
 		genTypescript.AddProcedureToTree(fullRoute, params, input, output, genTypescript.Method(MUTATION))
 	}
 	handler.Post(slug, FullHandler)
@@ -99,13 +99,14 @@ func addMutationProcedure[T fiber.Router, queryParams any, input any, output any
 
 func validateQuery[queryParams any, input any, output any](c *fiber.Ctx, validatorFn validatorFn, proc *Procedure[queryParams, input, output]) (queryParams, error) {
 	queryParamInstance := new(queryParams)
+
 	if proc.queryParamsSchema == nil || validatorFn == nil {
 		return *queryParamInstance, nil
 	}
 	if err := c.QueryParser(queryParamInstance); err != nil {
 		return *queryParamInstance, err
 	}
-
+	fmt.Println("queryParamInstance", queryParamInstance)
 	if err := validatorFn(queryParamInstance); err != nil {
 
 		return *queryParamInstance, &fiber.Error{
@@ -123,9 +124,8 @@ func validateInput[queryParams any, input any, output any](c *fiber.Ctx, validat
 	if proc.inputSchema == nil || validatorFn == nil {
 		return *inputInstance, nil
 	}
-
 	if err := c.BodyParser(inputInstance); err != nil {
-		fmt.Println("err here at bodyParser")
+		fmt.Println("err here at bodyParser of input", err.Error())
 		return *inputInstance, err
 	}
 	// Validate the struct
@@ -139,13 +139,17 @@ func validateInput[queryParams any, input any, output any](c *fiber.Ctx, validat
 	}
 	return *inputInstance, nil
 }
-func validateOutput[queryParams any, input any, output any](validatorFn validatorFn, proc *Procedure[queryParams, input, output], res *Res[output]) error {
+func validateOutput[queryParams any, input any, output any](validatorFn validatorFn, proc *Procedure[queryParams, input, output], res *Res[output], path string, method Method) error {
 	if proc.outputSchema == nil || validatorFn == nil {
 		return nil
 	}
 
 	if err := validatorFn(res.Body); err != nil {
-		panic(err.Error())
+		fmt.Printf(fiber.DefaultColors.Red+"An output error has occurred at: %s, method : %s , error : %s \n", path, method, err.Error())
+		return &fiber.Error{
+			Code:    500,
+			Message: "A server error has occurred. Please try again later",
+		}
 	}
 	return nil
 }

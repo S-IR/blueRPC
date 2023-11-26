@@ -23,4 +23,7 @@ type Config struct {
 
 	//This is the home route that all of the bluerpc routes will start from. Default is "/bluerpc".
 	StartingPath string
+
+	// by default Bluerpc transforms every error that is sent to the user into a json by the format  DefaultErrorResponse. Turn this to true if you would like fiber to handle what form will the errors have or write your own middleware to convert all of the errors to your liking
+	DisableJSONOnlyErrors bool
 }
