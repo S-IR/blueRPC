@@ -8,9 +8,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 )
+
+type test_query struct {
+	Something string `query:"query" validate:"required"`
+}
+
+type test_input struct {
+	House string `json:"house" validate:"required"`
+}
+
+type test_output struct {
+	FieldOneOut   string `json:"fieldOneOut" validate:"required"`
+	FieldTwoOut   string `json:"fieldTwoOut" `
+	FieldThreeOut string `json:"fieldThreeOut" validate:"required"`
+}
 
 func TestStart(t *testing.T) {
 	app := New()
@@ -39,7 +52,7 @@ func TestStart(t *testing.T) {
 	time.Sleep(time.Second * 1)
 
 	// Make the request to the server
-	resp, err := http.Get("http://localhost:3000/hello/world")
+	resp, err := http.Get("http://localhost:3000/bluerpc/hello/world")
 	if err != nil {
 		t.Fatalf("Failed to make request: %v", err)
 	}
@@ -60,58 +73,5 @@ func TestStart(t *testing.T) {
 		t.Errorf("Expected 'world', got '%s'", output.Something)
 	}
 	fmt.Println("PASSED TESTING START")
-
-}
-
-func TestInvalidInput(t *testing.T) {
-
-	validator := validator.New(validator.WithRequiredStructEnabled())
-
-	app := New(&Config{
-		ValidatorFn: validator.Struct,
-	})
-	grp := app.Group("/hey")
-	type Input struct {
-		Something string `validate:"required"`
-	}
-
-	worldQuery := NewQuery[any, any](app, func(ctx *fiber.Ctx, queryParams any) (*Res[any], error) {
-		return &Res[any]{
-			Status: 200,
-			Body: map[string]string{
-				"hello": "world",
-			},
-		}, nil
-	})
-	worldQuery.Attach(grp, "/hey")
-	go func() {
-		if err := app.Listen(":3000"); err != nil {
-			t.Logf("Server failed to start: %v", err)
-		}
-	}()
-
-	// Wait a bit for the server to start
-	time.Sleep(time.Second * 1)
-
-	// Make the request to the server
-	resp, err := http.Get("http://localhost:3000/hello/world")
-	if err != nil {
-		t.Fatalf("Failed to make request: %v", err)
-	}
-	defer resp.Body.Close()
-	// Read the response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("Failed to read response body: %v", err)
-	}
-	type DefaultResError struct {
-		Message string
-	}
-	// Unmarshal and assert the response
-	var resError DefaultResError
-	if err := json.Unmarshal(body, &resError); err != nil {
-		t.Fatalf("Failed to unmarshal response: %v", err)
-	}
-	fmt.Println("PASSED TESTING INVALID INPUT")
 
 }

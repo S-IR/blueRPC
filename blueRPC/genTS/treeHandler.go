@@ -30,7 +30,6 @@ func AddProcedureToTree(
 		currentNode = currentNode.Children[segment]
 
 	}
-
 	if procedureType == QUERY {
 		currentNode.query = &procedureInfo{
 			queryParams: queryParams,

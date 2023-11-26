@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -18,17 +17,18 @@ import (
 
 type validatorFn func(interface{}) error
 type ValidRouter interface {
-	getFiberRouter() fiber.Router
+	getFiberRouter() *fiber.Router
 	getPath() string
 }
 
 type App struct {
-	fiberApp *fiber.App
-	config   *Config
+	fiberApp   *fiber.App
+	config     *Config
+	startGroup *fiber.Router
 }
 
-func (a *App) getFiberRouter() fiber.Router {
-	return a.fiberApp
+func (a *App) getFiberRouter() *fiber.Router {
+	return a.startGroup
 }
 
 func New(blueConfig ...*Config) *App {
@@ -46,11 +46,12 @@ func New(blueConfig ...*Config) *App {
 	}
 
 	fiberApp := fiber.New(*cfg.FiberConfig)
-	cfg, fiberApp = setAppDefaults(blueConfig, fiberApp)
+	cfg, childApp, startGroup := setAppDefaults(blueConfig, fiberApp)
 
 	return &App{
-		fiberApp: fiberApp,
-		config:   cfg,
+		fiberApp:   childApp,
+		config:     cfg,
+		startGroup: startGroup,
 	}
 }
 
@@ -62,29 +63,16 @@ func NewFromApp(fiberApp *fiber.App, blueConfig ...*Config) *App {
 	} else {
 		cfg = &Config{}
 	}
-	cfg, fiberApp = setAppDefaults(blueConfig, fiberApp)
+	cfg, childApp, startGroup := setAppDefaults(blueConfig, fiberApp)
 
 	return &App{
-		fiberApp: fiberApp,
-		config:   cfg,
+		fiberApp:   childApp,
+		config:     cfg,
+		startGroup: startGroup,
 	}
 }
 
-func (a *App) Group(path string) *Group {
-
-	newFiberRouter := a.fiberApp.Group(path)
-
-	// newFiberRouter.Get("/hello", func(c *fiber.Ctx) error {
-	// 	return c.SendString("Hello, World!")
-	// })
-	return &Group{
-		fiberRouter: newFiberRouter,
-		basePath:    path,
-		fiberApp:    a.fiberApp,
-	}
-}
-
-func setAppDefaults(blueConfig []*Config, fiberApp *fiber.App) (*Config, *fiber.App) {
+func setAppDefaults(blueConfig []*Config, fiberApp *fiber.App) (*Config, *fiber.App, *fiber.Router) {
 
 	var cfg *Config
 
@@ -109,13 +97,29 @@ func setAppDefaults(blueConfig []*Config, fiberApp *fiber.App) (*Config, *fiber.
 	if cfg.StartingPath == "" {
 		cfg.StartingPath = startPath
 	}
+	startGroup := fiberApp.Group(cfg.StartingPath)
 	if !cfg.DisableRequestLogging {
 		fiberApp.Use(logger.New())
 	}
 	if !cfg.DisableJSONOnlyErrors {
 		fiberApp.Use(DefaultErrorMiddleware)
 	}
-	return cfg, fiberApp
+
+	return cfg, fiberApp, &startGroup
+}
+
+func (a *App) Group(path string) *Group {
+
+	newFiberRouter := (*a.startGroup).Group(path)
+
+	// newFiberRouter.Get("/hello", func(c *fiber.Ctx) error {
+	// 	return c.SendString("Hello, World!")
+	// })
+	return &Group{
+		fiberRouter: newFiberRouter,
+		basePath:    a.config.StartingPath + path,
+		fiberApp:    a.fiberApp,
+	}
 }
 
 func (a *App) Static(route, filePath string, settings ...*fiber.Static) *App {
@@ -168,6 +172,7 @@ func (a *App) BluerpcConfig() Config {
 func (a *App) Listen(port string) *App {
 
 	var name string
+
 	lastSlashIndex := strings.LastIndex(a.config.StartingPath, "/")
 	if lastSlashIndex == -1 {
 		name = a.config.StartingPath
@@ -176,14 +181,21 @@ func (a *App) Listen(port string) *App {
 	}
 
 	if a.config.disableGenerateTS == false {
-		start := time.Now()
-		err := genTypescript.StartGenerating(a.config.OutputPath, name)
+		// start := time.Now()
+		err := genTypescript.StartGenerating(a.config.OutputPath, name, a.config.StartingPath)
 		if err != nil {
 			panic(err)
 		}
-		elapsed := time.Since(start)
-		fmt.Printf(fiber.DefaultColors.Green+"Execution time for GENERATING TYPESCRIPT: %s\n", elapsed)
+		// elapsed := time.Since(start)
+		// fmt.Printf(fiber.DefaultColors.Green+"Execution time for GENERATING TYPESCRIPT: %s\n"+fiber.DefaultColors.Reset, elapsed)
 	}
+
+	// routes := a.fiberApp.GetRoutes()
+	// fmt.Println("Registered Routes:")
+
+	// for _, route := range routes {
+	// 	fmt.Printf("%s %s\n", route.Method, route.Path)
+	// }
 
 	a.fiberApp.Listen(port)
 	return a

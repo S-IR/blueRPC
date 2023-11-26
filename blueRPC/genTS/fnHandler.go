@@ -17,8 +17,7 @@ func genTSFuncFromQuery(stringBuilder *strings.Builder, queryParams, output inte
 	stringBuilder.WriteString(")=>(")
 
 	if output != nil {
-		outputType := reflect.TypeOf(queryParams)
-		stringBuilder.WriteString("output:")
+		outputType := reflect.TypeOf(output)
 		stringBuilder.WriteString(GoFieldsToTSObj(outputType))
 	} else {
 		stringBuilder.WriteString("void")
@@ -58,7 +57,6 @@ func genTSFuncFromMutation(stringBuilder *strings.Builder, queryParams, input, o
 		if outputType.Kind() == reflect.Ptr {
 			outputType = outputType.Elem()
 		}
-		fmt.Println("OUTPUT KIND", outputType.Kind())
 		stringBuilder.WriteString(GoFieldsToTSObj(outputType))
 	} else {
 		stringBuilder.WriteString("void")

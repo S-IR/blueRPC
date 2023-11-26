@@ -16,16 +16,6 @@ type test_queryParams struct {
 	Something string `query:"query" validate:"required"`
 }
 
-type test_input struct {
-	House string `validate:"required"`
-}
-
-type test_output struct {
-	FieldOneOut   string `json:"fieldOneOut" validate:"required"`
-	FieldTwoOut   string `json:"fieldTwoOut" `
-	FieldThreeOut string `json:"fieldThreeOut" validate:"required"`
-}
-
 func TestQuery(t *testing.T) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
@@ -50,7 +40,7 @@ func TestQuery(t *testing.T) {
 	proc.Attach(app, "/test")
 
 	// app.Listen(":3000")
-	req, err := http.NewRequest("GET", "http://localhost:3000/test", nil)
+	req, err := http.NewRequest("GET", "http://localhost:3000/bluerpc/test", nil)
 	if err != nil {
 		t.Fatalf(fiber.DefaultColors.Red+"Could not create a new request", err.Error())
 	}
@@ -79,7 +69,7 @@ func TestQuery(t *testing.T) {
 
 	// TESTING VALID QUERY PARAMS
 	fmt.Println(fiber.DefaultColors.Green + "TESTING VALID QUERY PARAMS")
-	req, err = http.NewRequest("GET", "http://localhost:3000/test?query=dwa", nil)
+	req, err = http.NewRequest("GET", "http://localhost:3000/bluerpc/test?query=dwa", nil)
 	if err != nil {
 		t.Fatalf(fiber.DefaultColors.Red+"Could not create a new request", err.Error())
 	}
@@ -142,7 +132,7 @@ func TestMutation(t *testing.T) {
 
 	// Log the JSON payload before sending the request
 
-	req, err := http.NewRequest("POST", "http://localhost:3000/test", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", "http://localhost:3000/bluerpc/test", bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")
 
 	if err != nil {
@@ -180,7 +170,7 @@ func TestMutation(t *testing.T) {
 		return
 	}
 	fmt.Println(fiber.DefaultColors.Green + "TESTING VALID MUTATION PARAMS")
-	req, err = http.NewRequest("POST", "http://localhost:3000/test?query=dwa", bytes.NewBuffer(jsonData))
+	req, err = http.NewRequest("POST", "http://localhost:3000/bluerpc/test?query=dwa", bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")
 
 	if err != nil {
@@ -222,7 +212,7 @@ func TestMutation(t *testing.T) {
 	})
 	fakeProc.Attach(app, "/error")
 
-	req, err = http.NewRequest("POST", "http://localhost:3000/error?query=dwa", bytes.NewBuffer(jsonData))
+	req, err = http.NewRequest("POST", "http://localhost:3000/bluerpc/error?query=dwa", bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")
 
 	if err != nil {
@@ -248,6 +238,6 @@ func TestMutation(t *testing.T) {
 
 	}
 
-	fmt.Println(fiber.DefaultColors.Green + "PASSED INVALID OUTPUT")
+	fmt.Println(fiber.DefaultColors.Green + "PASSED INVALID OUTPUT" + fiber.DefaultColors.Reset)
 
 }

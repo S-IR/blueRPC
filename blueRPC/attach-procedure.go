@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func addQueryProcedure[T fiber.Router, queryParams any, input any, output any](handler T, basePath, slug string, proc *Procedure[queryParams, input, output]) {
+func addQueryProcedure[T *fiber.Router, queryParams any, input any, output any](handler T, basePath, slug string, proc *Procedure[queryParams, input, output]) {
 
 	fullRoute := fmt.Sprintf("%s%s", basePath, slug)
 	validatorFn := *proc.validatorFn
@@ -45,11 +45,11 @@ func addQueryProcedure[T fiber.Router, queryParams any, input any, output any](h
 		genTypescript.AddProcedureToTree(fullRoute, params, nil, output, genTypescript.Method(QUERY))
 
 	}
-	handler.Get(slug, FullHandler)
+	(*handler).Get(slug, FullHandler)
 
 }
 
-func addMutationProcedure[T fiber.Router, queryParams any, input any, output any](handler T, basePath, slug string, proc *Procedure[queryParams, input, output]) {
+func addMutationProcedure[T *fiber.Router, queryParams any, input any, output any](handler T, basePath, slug string, proc *Procedure[queryParams, input, output]) {
 	fullRoute := fmt.Sprintf("%s%s", basePath, slug)
 
 	validatorFn := *proc.validatorFn
@@ -94,7 +94,7 @@ func addMutationProcedure[T fiber.Router, queryParams any, input any, output any
 
 		genTypescript.AddProcedureToTree(fullRoute, params, input, output, genTypescript.Method(MUTATION))
 	}
-	handler.Post(slug, FullHandler)
+	(*handler).Post(slug, FullHandler)
 }
 
 func validateQuery[queryParams any, input any, output any](c *fiber.Ctx, validatorFn validatorFn, proc *Procedure[queryParams, input, output]) (queryParams, error) {
@@ -106,7 +106,6 @@ func validateQuery[queryParams any, input any, output any](c *fiber.Ctx, validat
 	if err := c.QueryParser(queryParamInstance); err != nil {
 		return *queryParamInstance, err
 	}
-	fmt.Println("queryParamInstance", queryParamInstance)
 	if err := validatorFn(queryParamInstance); err != nil {
 
 		return *queryParamInstance, &fiber.Error{
@@ -145,7 +144,7 @@ func validateOutput[queryParams any, input any, output any](validatorFn validato
 	}
 
 	if err := validatorFn(res.Body); err != nil {
-		fmt.Printf(fiber.DefaultColors.Red+"An output error has occurred at: %s, method : %s , error : %s \n", path, method, err.Error())
+		fmt.Printf(fiber.DefaultColors.Red+"INVALID OUTPUT ERROR at: %s, method : %s , error : %s \n", path, method, err.Error())
 		return &fiber.Error{
 			Code:    500,
 			Message: "A server error has occurred. Please try again later",

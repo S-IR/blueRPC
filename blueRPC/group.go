@@ -25,8 +25,8 @@ func (grp *Group) Group(path string) *Group {
 	}
 }
 
-func (grp *Group) getFiberRouter() fiber.Router {
-	return grp.fiberRouter
+func (grp *Group) getFiberRouter() *fiber.Router {
+	return &grp.fiberRouter
 }
 func (grp *Group) getPath() string {
 	return grp.basePath

@@ -2,7 +2,12 @@ package bluerpc
 
 import "github.com/gofiber/fiber/v2"
 
-type RunEnv string
+type RuntimeEnv string
+
+const (
+	DEVELOPMENT RuntimeEnv = "development"
+	PRODUCTION  RuntimeEnv = "production"
+)
 
 type Config struct {
 	FiberConfig *fiber.Config

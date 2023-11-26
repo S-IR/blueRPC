@@ -11,7 +11,7 @@ func nodeToTS(stringBuilder *strings.Builder, node *routeNode, isLast bool) {
 
 	if node.query != nil {
 		stringBuilder.WriteString(fmt.Sprintf("query:"))
-		queryParams, output := node.query.queryParams, node.query.input
+		queryParams, output := node.query.queryParams, node.query.output
 		genTSFuncFromQuery(stringBuilder, queryParams, output)
 
 	}

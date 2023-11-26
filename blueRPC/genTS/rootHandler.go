@@ -39,12 +39,24 @@ func init() {
 	}
 }
 
-func StartGenerating(filePath, name string) error {
+func StartGenerating(filePath, name, startingPath string) error {
 	builder := strings.Builder{}
 
 	builder.WriteString(fmt.Sprintf("type %s =", name))
+	startingPath = strings.ReplaceAll(startingPath, "/", "")
 
-	nodeToTS(&builder, root, true)
+	if startingPath == "" || startingPath == "/" {
+		nodeToTS(&builder, root, true)
+	} else if root.Children != nil && root.Children[startingPath] != nil {
+		nodeToTS(&builder, root.Children[startingPath], true)
+	} else {
+		fmt.Println("root.Children", root.Children)
+
+		for path, _ := range root.Children {
+			fmt.Println("PATH OF ROUTE " + path)
+		}
+		panic("This starting path does not exist or is not set" + startingPath)
+	}
 
 	file, err := os.Create(filePath)
 	if err != nil {

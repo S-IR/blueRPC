@@ -1,1 +1,1 @@
-type bluerpc ={hello:{world:{query:()=>(void);}},hey:{hey:{query:()=>(void);}}}
+type bluerpc ={hello:{world:{query:()=>({ Something: string|undefined,});}}}
