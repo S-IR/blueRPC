@@ -32,8 +32,7 @@ func addQueryProcedure[T *fiber.Router, queryParams any, input any, output any](
 		if err != nil {
 			return err
 		}
-
-		return c.JSON(res.Body)
+		return sendRes(c, res)
 	}
 
 	if !proc.app.config.disableGenerateTS {
@@ -82,8 +81,7 @@ func addMutationProcedure[T *fiber.Router, queryParams any, input any, output an
 		if err != nil {
 			return err
 		}
-
-		return c.JSON(res.Body)
+		return sendRes(c, res)
 	}
 	if !proc.app.config.disableGenerateTS {
 		params := *new(queryParams)
@@ -172,6 +170,28 @@ func setHeaders(ctx *fiber.Ctx, header Header) error {
 		if cookie != nil {
 			ctx.Cookie(cookie)
 		}
+	}
+	return nil
+}
+func sendRes[output any](ctx *fiber.Ctx, res *Res[output]) error {
+
+	switch res.Header.ContentType {
+	case fiber.MIMETextXML, fiber.MIMETextXMLCharsetUTF8:
+		return ctx.XML(res.Body)
+	case fiber.MIMETextPlain, fiber.MIMETextPlainCharsetUTF8:
+		return ctx.SendString(fmt.Sprint(res.Body))
+	case fiber.MIMEApplicationJSON, fiber.MIMEApplicationJSONCharsetUTF8:
+		return ctx.JSON(res.Body)
+	case fiber.MIMETextJavaScript, fiber.MIMEApplicationJavaScript:
+		return ctx.SendString(fmt.Sprint(res.Body))
+	case fiber.MIMEApplicationForm:
+		return ctx.SendString(fmt.Sprint(res.Body))
+	case fiber.MIMEOctetStream:
+		return ctx.SendString(fmt.Sprint(res.Body))
+	case fiber.MIMEMultipartForm:
+		ctx.SendString(fmt.Sprint(res.Body))
+	default:
+		return ctx.Status(400).SendString("Unsupported media type")
 	}
 	return nil
 }
