@@ -1,0 +1,8 @@
+# Ignore .env files
+.env
+
+# Ignore .env.local files
+.env.local
+
+# Ignore anything containing the word "local"
+*local*
